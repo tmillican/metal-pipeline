@@ -4,7 +4,7 @@
   NSWindow *_window;
 }
 
--(void)applicationDidFinishLaunching:(NSNotification *)notification
+- (void)applicationDidFinishLaunching:(NSNotification *)notification
 {
   NSRect frame = NSMakeRect(0, 0, 1280, 720);
   _window = [[NSWindow alloc] initWithContentRect:frame
@@ -22,7 +22,7 @@
   [_window becomeMainWindow];
 }
 
--(BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender
+- (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender
 {
   return true;
 }
