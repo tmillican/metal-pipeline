@@ -9,7 +9,6 @@
   id<MTLBuffer> _vertexBuffer;
   id<MTLBuffer> _vertexIndexBuffer;
   RenderSource *_source;
-  BOOL _firstPass;
 }
 
 static const NSUInteger VERTEX_BUFFER_CAPACITY = 40960;
@@ -19,7 +18,6 @@ static const NSUInteger VERTEX_INDEX_BUFFER_CAPACITY = 40960;
 {
   self = [super init];
   if (self != nil) {
-    _firstPass = true;
     _source = source;
     _device = device;
     NSError* error = nil;
@@ -130,12 +128,7 @@ static const NSUInteger VERTEX_INDEX_BUFFER_CAPACITY = 40960;
 
   [_source tick];
 
-  // stream geometry from the CPU
-  NSUInteger vertexDataSize = sizeof(Vertex) * _source.vertexCount;
-  memcpy(_vertexBuffer.contents, _source.vertices, vertexDataSize);
-  NSUInteger vertexIndexDataSize = sizeof(uint32_t) * _source.vertexIndexCount;
-  memcpy(_vertexIndexBuffer.contents, _source.vertexIndices, vertexIndexDataSize);
-
+  [self loadGeometry];
   // The vertex buffer will occupy binding point [[ buffer(0) ]]
   [commandEncoder setVertexBuffer:_vertexBuffer offset:0 atIndex:0];
 
@@ -148,6 +141,12 @@ static const NSUInteger VERTEX_INDEX_BUFFER_CAPACITY = 40960;
   [commandEncoder endEncoding];
   [commandBuffer presentDrawable:drawable];
   [commandBuffer commit];
+}
+
+- (void)loadGeometry
+{
+  memcpy(_vertexBuffer.contents, _source.vertices.bytes, _source.vertices.length);
+  memcpy(_vertexIndexBuffer.contents, _source.vertexIndices.bytes, _source.vertexIndices.length);
 }
 
 @end

@@ -17,9 +17,15 @@ static MTLClearColor CLEAR_COLOR = { 1.0, 0.0, 1.0, 1.0 };
 {
   self = [super init];
   if (self) {
-    _vertices = VERTICES;
-    _vertexCount = 4;
-    _vertexIndices = VERTEX_INDICES;
+    // Wrap the bytes in NSData so we have a length property for the renderer.
+    _vertices = [[NSData alloc]
+                 initWithBytesNoCopy:VERTICES
+                 length:sizeof(VERTICES)
+                 freeWhenDone: false];
+    _vertexIndices = [[NSData alloc]
+                      initWithBytesNoCopy:VERTEX_INDICES
+                      length:sizeof(VERTEX_INDICES)
+                      freeWhenDone:false];
     _vertexIndexCount = 6;
     _clearColor = CLEAR_COLOR;
   }

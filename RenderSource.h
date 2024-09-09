@@ -6,11 +6,9 @@
 
 @interface RenderSource : NSObject
 
-@property Vertex *vertices;
+@property NSData *vertices;
 
-@property NSUInteger vertexCount;
-
-@property uint32_t *vertexIndices;
+@property NSData *vertexIndices;
 
 @property NSUInteger vertexIndexCount;
 
