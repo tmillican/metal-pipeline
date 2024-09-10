@@ -3,12 +3,44 @@
 @implementation RenderSource
 
 static Vertex VERTICES[4] = {
-  { { -1, -1, 0 }, { 1, 1, 0 } },
-  { { -1, 1, 0 }, { 1, 0, 0 } },
-  { { 1, -1, 0 }, { 0, 1, 0 } },
-  { { 1, 1, 0 }, { 0, 0, 1 } }
+  {
+    { -1, -1, 0 }, // position
+    { 1, 1, 0 }, // color
+    { 0, 0 }, // tex0Coords
+    { 0, 0 }, // tex1Coords
+    { 0, 0 }, // tex2Coords
+    { 0, 0 }, // tex3Coords
+    // ... etc.
+  },
+  {
+    { -1, 1, 0 },
+    { 1, 0, 0 },
+    { 0, 1 },
+    { 0, 0 },
+    { 0, 0 },
+    { 0, 0 },
+  },
+  {
+    { 1, -1, 0 },
+    { 0, 1, 0 },
+    { 1, 0 },
+    { 0, 0 },
+    { 0, 0 },
+    { 0, 0 },
+  },
+  {
+    { 1, 1, 0 },
+    { 0, 0, 1 },
+    { 1, 1 },
+    { 0, 0 },
+    { 0, 0 },
+    { 0, 0 },
+  }
 };
 
+// NOTE: my renderer code asssumes uint32_t when figuring out how many
+// indices are in the `vertexIndices` property so that I don't have
+// to pass an explicit count.
 static uint32_t VERTEX_INDICES[6] = { 0, 1, 2, 1, 2, 3 };
 
 static MTLClearColor CLEAR_COLOR = { 1.0, 0.0, 1.0, 1.0 };
@@ -26,8 +58,8 @@ static MTLClearColor CLEAR_COLOR = { 1.0, 0.0, 1.0, 1.0 };
                       initWithBytesNoCopy:VERTEX_INDICES
                       length:sizeof(VERTEX_INDICES)
                       freeWhenDone:false];
-    _vertexIndexCount = 6;
     _clearColor = CLEAR_COLOR;
+    _texturePaths = @[ @"blue.png", [NSNull null], [NSNull null], [NSNull null] ];
   }
   return self;
 }
