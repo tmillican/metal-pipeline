@@ -16,8 +16,6 @@
   UniformsHandler *_uniformsHandler;
   TextureHandler *_textureHandler;
   PipelineHandler *_pipelineHandler;
-
-  bool _firstPass;
 }
 
 + (NSUInteger)getTextureSlotCount
@@ -29,7 +27,6 @@
 {
   self = [super init];
   if (!self) return self;
-  _firstPass = true;
   _source = source;
   _device = device;
   _vertexHandler = [[VertexHandler alloc] initWithDevice:_device source:_source];
@@ -68,7 +65,6 @@
   [commandEncoder endEncoding];
   [commandBuffer presentDrawable:drawable];
   [commandBuffer commit];
-  _firstPass = false;
 }
 
 @end
