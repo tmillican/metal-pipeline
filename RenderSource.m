@@ -50,7 +50,7 @@ static Vertex VERTICES[4] = {
 // to pass an explicit count.
 static uint32_t VERTEX_INDICES[6] = { 0, 1, 2, 1, 2, 3 };
 
-static MTLClearColor CLEAR_COLOR = { 1.0, 0.0, 1.0, 1.0 };
+static MTLClearColor CLEAR_COLOR = { 0.5, 0.5, 0.5, 1.0 };
 
 static NSString *SHADER1_PATH = @"shader1.metal";
 
