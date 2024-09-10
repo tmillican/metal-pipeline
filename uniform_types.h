@@ -1,0 +1,4 @@
+enum UniformType {
+  UniformTypeInt,
+  UniformTypeFloat,
+};

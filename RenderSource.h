@@ -14,6 +14,8 @@
 
 @property NSArray *texturePaths;
 
+@property NSMutableArray *uniformDescriptors;
+
 - (void)tick;
 
 @end

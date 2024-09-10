@@ -4,6 +4,7 @@
 
 #import "Renderer.h"
 #import "Vertex.h"
+#import "uniform_types.h"
 
 @implementation Renderer {
   id<MTLDevice> _device;
@@ -11,18 +12,23 @@
   id<MTLRenderPipelineState> _pipelineState;
   id<MTLBuffer> _vertexBuffer;
   id<MTLBuffer> _vertexIndexBuffer;
+  NSMutableData * _uniformsBuffer;
   MTKTextureLoader* _textureLoader;
   NSMutableDictionary<NSString*, id<MTLTexture>> *_textureCache;
   RenderSource *_source;
+
+  bool _firstPass;
 }
 
 static const NSUInteger VERTEX_BUFFER_CAPACITY = 40960;
 static const NSUInteger VERTEX_INDEX_BUFFER_CAPACITY = 40960;
+static const NSUInteger UNIFORMS_BUFFER_CAPACITY = 4096;
 
 - (Renderer *)initWithDevice:(id<MTLDevice>)device source:(RenderSource *)source
 {
   self = [super init];
   if (self != nil) {
+    _firstPass = true;
     _source = source;
     _device = device;
     _commandQueue = [_device newCommandQueue];
@@ -34,6 +40,8 @@ static const NSUInteger VERTEX_INDEX_BUFFER_CAPACITY = 40960;
     if (!_pipelineState) return nil;
 
     if (![self initializeTextureLoader]) return nil;
+
+    _uniformsBuffer = [NSMutableData dataWithLength:UNIFORMS_BUFFER_CAPACITY];
 
     [self initializeVertexBuffers];
   }
@@ -209,7 +217,7 @@ MTKTextureLoaderOptionOrigin:
   for (size_t i = 0; i < TEXTURE_SLOTS_COUNT; i++) {
     id p = _source.texturePaths[i];
     if (p == [NSNull null]) {
-      [commandEncoder setFragmentTexture:_textureCache[@"EMPTY_TEXTURE"] atIndex: i];
+      [commandEncoder setFragmentTexture:_textureCache[@"EMPTY_TEXTURE"] atIndex:i];
       continue;
     }
     NSString *texturePath = (NSString *)p;
@@ -225,9 +233,40 @@ MTKTextureLoaderOptionOrigin:
       _textureCache[texturePath] = texture;
       [commandEncoder setFragmentTexture:texture atIndex:i];
     } else {
-      [commandEncoder setFragmentTexture:_textureCache[@"EMPTY_TEXTURE"] atIndex: i];
+      [commandEncoder setFragmentTexture:_textureCache[@"EMPTY_TEXTURE"] atIndex:i];
     }
   }
+}
+
+- (void)loadAndBindUniforms:(id<MTLRenderCommandEncoder>)commandEncoder
+{
+  void *buffer = _uniformsBuffer.mutableBytes;
+  size_t offset = 0;
+  for (size_t i = 0; i < _source.uniformDescriptors.count; i++) {
+    id descriptor = _source.uniformDescriptors[i];
+    enum UniformType type = ((NSNumber *)descriptor[@"type"]).intValue;
+    int intValue;
+    float floatValue;
+    switch (type) {
+    case UniformTypeInt:
+      intValue = ((NSNumber *)descriptor[@"value"]).intValue;
+      memcpy(buffer + offset, &intValue, sizeof(int));
+      offset += sizeof(int);
+      break;
+    case UniformTypeFloat:
+      floatValue = ((NSNumber *)descriptor[@"value"]).floatValue;
+      memcpy(buffer + offset, &floatValue, sizeof(float));
+      offset += sizeof(float);
+      break;
+    default:
+      NSLog(@"Invalid uniform type in descriptor %lu: %d", i, type);
+      break;
+    }
+  }
+  // For data totalling <= 4K, Apple advises using set[Foo]Bytes
+  // instead of set[Foo]Buffer
+  [commandEncoder setVertexBytes:buffer length:offset atIndex:1];
+  [commandEncoder setFragmentBytes:buffer length:offset atIndex:0];
 }
 
 
@@ -252,6 +291,7 @@ MTKTextureLoaderOptionOrigin:
 
   [self loadAndBindVertexData:commandEncoder];
   [self loadAndBindTextures:commandEncoder];
+  [self loadAndBindUniforms:commandEncoder];
 
   [commandEncoder
    drawIndexedPrimitives:MTLPrimitiveTypeTriangle
@@ -263,6 +303,7 @@ MTKTextureLoaderOptionOrigin:
   [commandEncoder endEncoding];
   [commandBuffer presentDrawable:drawable];
   [commandBuffer commit];
+  _firstPass = false;
 }
 
 @end
