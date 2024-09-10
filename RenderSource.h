@@ -6,6 +6,8 @@
 
 @interface RenderSource : NSObject
 
+@property NSString *shaderPath;
+
 @property NSData *vertices;
 
 @property NSData *vertexIndices;

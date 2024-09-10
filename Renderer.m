@@ -3,6 +3,7 @@
 #include <sys/types.h>
 
 #import "Renderer.h"
+#import "TextureLoader.h"
 #import "Vertex.h"
 #import "uniform_types.h"
 
@@ -13,9 +14,8 @@
   id<MTLBuffer> _vertexBuffer;
   id<MTLBuffer> _vertexIndexBuffer;
   NSMutableData * _uniformsBuffer;
-  MTKTextureLoader* _textureLoader;
-  NSMutableDictionary<NSString*, id<MTLTexture>> *_textureCache;
   RenderSource *_source;
+  TextureLoader *_textureLoader;
 
   bool _firstPass;
 }
@@ -31,6 +31,7 @@ static const NSUInteger UNIFORMS_BUFFER_CAPACITY = 4096;
     _firstPass = true;
     _source = source;
     _device = device;
+    _textureLoader = [[TextureLoader alloc] initWithDevice:_device];
     _commandQueue = [_device newCommandQueue];
 
     id library = [self initializeShaders];
@@ -38,8 +39,6 @@ static const NSUInteger UNIFORMS_BUFFER_CAPACITY = 4096;
 
     [self initializePipeline:library];
     if (!_pipelineState) return nil;
-
-    if (![self initializeTextureLoader]) return nil;
 
     _uniformsBuffer = [NSMutableData dataWithLength:UNIFORMS_BUFFER_CAPACITY];
 
@@ -74,16 +73,6 @@ static const NSUInteger UNIFORMS_BUFFER_CAPACITY = 4096;
   if (!_pipelineState) {
     NSLog(@"Failed to create pipeline state, error: %@", error);
   }
-}
-
-- (bool)initializeTextureLoader
-{
-  _textureLoader = [[MTKTextureLoader alloc] initWithDevice:_device];
-  id emptyTexture = [self loadTextureFromDisk:@"1px-transparent.png"];
-  if (!emptyTexture) return false;
-  _textureCache = [[NSMutableDictionary alloc] init];
-  _textureCache[@"EMPTY_TEXTURE"] = emptyTexture;
-  return true;
 }
 
 - (void)initializeVertexBuffers
@@ -173,28 +162,6 @@ static const NSUInteger UNIFORMS_BUFFER_CAPACITY = 4096;
   return vertexDescriptor;
 }
 
-- (id<MTLTexture>)loadTextureFromDisk:(NSString*)path
-{
-  // This formatting is whack -- blame SourceKit lsp.
-  NSDictionary<NSString *, id> *options = @ {
-    // This is suitable for texures that are write-only to the CPU.
-MTKTextureLoaderOptionTextureCPUCacheMode:
-    [[NSNumber alloc] initWithUnsignedInt:MTLCPUCacheModeWriteCombined],
-MTKTextureLoaderOptionOrigin:
-    MTKTextureLoaderOriginBottomLeft,
-  };
-  NSError *error;
-  id<MTLTexture> texture = [_textureLoader
-                            newTextureWithContentsOfURL:[NSURL fileURLWithPath:path]
-                            options:options
-                            error:&error
-                           ];
-  if (!texture) {
-    NSLog(@"Error loading texture '%@': %@", path, error);
-  }
-  return texture;
-}
-
 // Loads the vertex and vertex index data from the `RenderSource` into their
 // respective `MTLBuffer`s. The vertex data buffer is bound to [[ buffer(0) ]]
 // in the vertex function argument table.
@@ -215,26 +182,9 @@ MTKTextureLoaderOptionOrigin:
 - (void)loadAndBindTextures:(id<MTLRenderCommandEncoder>)commandEncoder
 {
   for (size_t i = 0; i < TEXTURE_SLOTS_COUNT; i++) {
-    id p = _source.texturePaths[i];
-    if (p == [NSNull null]) {
-      [commandEncoder setFragmentTexture:_textureCache[@"EMPTY_TEXTURE"] atIndex:i];
-      continue;
-    }
-    NSString *texturePath = (NSString *)p;
-    id<MTLTexture> cachedTexture = _textureCache[texturePath];
-    if (cachedTexture) {
-      [commandEncoder setFragmentTexture:cachedTexture atIndex:i];
-      continue;
-    }
-    id<MTLTexture> texture = [self loadTextureFromDisk:texturePath];
-    if (texture) {
-      // I've not imposed any limits on how much texture data can be
-      // cached, but that's an exercise for the reader.
-      _textureCache[texturePath] = texture;
-      [commandEncoder setFragmentTexture:texture atIndex:i];
-    } else {
-      [commandEncoder setFragmentTexture:_textureCache[@"EMPTY_TEXTURE"] atIndex:i];
-    }
+    if (_source.texturePaths[i] == [NSNull null]) continue;
+    id texture = [_textureLoader getTextureWithPath:_source.texturePaths[i]];
+    [commandEncoder setFragmentTexture:texture atIndex:i];
   }
 }
 
