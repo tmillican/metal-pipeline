@@ -3,7 +3,7 @@
 #include <sys/types.h>
 
 #import "Renderer.h"
-#import "TextureLoader.h"
+#import "TextureHandler.h"
 #import "Vertex.h"
 #import "uniform_types.h"
 
@@ -15,7 +15,7 @@
   id<MTLBuffer> _vertexIndexBuffer;
   NSMutableData * _uniformsBuffer;
   RenderSource *_source;
-  TextureLoader *_textureLoader;
+  TextureHandler *_textureHandler;
 
   bool _firstPass;
 }
@@ -24,6 +24,11 @@ static const NSUInteger VERTEX_BUFFER_CAPACITY = 40960;
 static const NSUInteger VERTEX_INDEX_BUFFER_CAPACITY = 40960;
 static const NSUInteger UNIFORMS_BUFFER_CAPACITY = 4096;
 
++ (NSUInteger)getTextureSlotCount
+{
+  return 4;
+}
+
 - (Renderer *)initWithDevice:(id<MTLDevice>)device source:(RenderSource *)source
 {
   self = [super init];
@@ -31,7 +36,7 @@ static const NSUInteger UNIFORMS_BUFFER_CAPACITY = 4096;
     _firstPass = true;
     _source = source;
     _device = device;
-    _textureLoader = [[TextureLoader alloc] initWithDevice:_device];
+    _textureHandler = [[TextureHandler alloc] initWithDevice:_device source:_source];
     _commandQueue = [_device newCommandQueue];
 
     id library = [self initializeShaders];
@@ -136,12 +141,12 @@ static const NSUInteger UNIFORMS_BUFFER_CAPACITY = 4096;
   offset += sizeof(float) * 3;
 
   // Vertex.texNCoords -> [[ attribute(2 + n) ]]
-  for (uint i = 0; i < TEXTURE_SLOTS_COUNT; i++) {
+  for (uint i = 0; i < [Renderer getTextureSlotCount]; i++) {
     MTLVertexAttributeDescriptor *textCoordsDescriptor = [[MTLVertexAttributeDescriptor alloc] init];
     textCoordsDescriptor.format = MTLVertexFormatFloat2;
     textCoordsDescriptor.offset = offset;
     textCoordsDescriptor.bufferIndex = 0;
-    // Texture coords will be tagged as [[ attribute(2) ]] .. [[ attribute(TEXTURE_SLOTS_COUNT + 2) ]]
+    // Texture coords will be tagged as [[ attribute(2) ]] .. [[ attribute(slots + 1) ]]
     [vertexDescriptor.attributes setObject:textCoordsDescriptor atIndexedSubscript:2 + i];
     offset += sizeof(float) * 2;
   }
@@ -176,17 +181,6 @@ static const NSUInteger UNIFORMS_BUFFER_CAPACITY = 4096;
   [commandEncoder setVertexBuffer:_vertexBuffer offset:0 atIndex:0];
 }
 
-
-// Loads the textures specified by `RenderSource.texturePaths`, either from
-// cache or disk and binds them to entries in the texture argument table.
-- (void)loadAndBindTextures:(id<MTLRenderCommandEncoder>)commandEncoder
-{
-  for (size_t i = 0; i < TEXTURE_SLOTS_COUNT; i++) {
-    if (_source.texturePaths[i] == [NSNull null]) continue;
-    id texture = [_textureLoader getTextureWithPath:_source.texturePaths[i]];
-    [commandEncoder setFragmentTexture:texture atIndex:i];
-  }
-}
 
 - (void)loadAndBindUniforms:(id<MTLRenderCommandEncoder>)commandEncoder
 {
@@ -240,7 +234,7 @@ static const NSUInteger UNIFORMS_BUFFER_CAPACITY = 4096;
   [_source tick];
 
   [self loadAndBindVertexData:commandEncoder];
-  [self loadAndBindTextures:commandEncoder];
+  [_textureHandler handleWithCommandEncoder:commandEncoder];
   [self loadAndBindUniforms:commandEncoder];
 
   [commandEncoder

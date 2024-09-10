@@ -1,5 +1,3 @@
-static const uint32_t TEXTURE_SLOTS_COUNT = 4;
-
 typedef struct {
   float position[3];
   float color[3];

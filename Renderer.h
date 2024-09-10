@@ -5,6 +5,8 @@
 
 @interface Renderer : NSObject <MTKViewDelegate>
 
++ (NSUInteger)getTextureSlotCount;
+
 - (Renderer *)initWithDevice:(id<MTLDevice>)device source:(RenderSource *)source;
 
 @end
