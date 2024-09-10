@@ -25,28 +25,28 @@ static const NSUInteger UNIFORMS_BUFFER_CAPACITY = 4096;
 
 - (void)handleWithCommandEncoder:(id<MTLRenderCommandEncoder>)commandEncoder
 {
-  // Decode the uniforms descriptor for this frame and write the data
-  // into the uniforms buffer.
+  // Decode the uniforms for this frame and pack the values in the uniforms
+  // buffer.
   void *buffer = _uniformsBuffer.contents;
   size_t offset = 0;
-  for (size_t i = 0; i < _source.uniformDescriptors.count; i++) {
-    id descriptor = _source.uniformDescriptors[i];
-    enum UniformType type = ((NSNumber *)descriptor[@"type"]).intValue;
+  for (size_t i = 0; i < _source.uniforms.count; i++) {
+    id uniform = _source.uniforms[i];
+    enum UniformType type = ((NSNumber *)uniform[@"type"]).intValue;
     int intValue;
     float floatValue;
     switch (type) {
     case UniformTypeInt:
-      intValue = ((NSNumber *)descriptor[@"value"]).intValue;
+      intValue = ((NSNumber *)uniform[@"value"]).intValue;
       memcpy(buffer + offset, &intValue, sizeof(int));
       offset += sizeof(int);
       break;
     case UniformTypeFloat:
-      floatValue = ((NSNumber *)descriptor[@"value"]).floatValue;
+      floatValue = ((NSNumber *)uniform[@"value"]).floatValue;
       memcpy(buffer + offset, &floatValue, sizeof(float));
       offset += sizeof(float);
       break;
     default:
-      NSLog(@"Invalid uniform type in descriptor %lu: %d", i, type);
+      NSLog(@"Invalid uniform type for uniform \"%@\": %d", uniform[@"name"], type);
       break;
     }
   }

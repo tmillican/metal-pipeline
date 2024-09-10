@@ -3,7 +3,10 @@
 
 @implementation RenderSource {
   unsigned int _tickCount;
-  NSMutableArray *_uniformDescriptors;
+  // The structure of the uniforms only changes when the shader changes, so we
+  // can cache and reuse them instead of rebuilding the descriptors every
+  // frame.
+  NSMutableArray *_uniformsCache;
 }
 
 static Vertex VERTICES[4] = {
@@ -49,58 +52,102 @@ static uint32_t VERTEX_INDICES[6] = { 0, 1, 2, 1, 2, 3 };
 
 static MTLClearColor CLEAR_COLOR = { 1.0, 0.0, 1.0, 1.0 };
 
-enum UniformDescriptors : size_t {
-  UniformScale = 0,
-  UniformTex0UDisp = 1,
-  UniformTextureSelector = 2,
-};
+static NSString *SHADER1_PATH = @"shader1.metal";
+
+static NSString *SHADER2_PATH = @"shader2.metal";
 
 - (RenderSource *)init
 {
   self = [super init];
-  if (self) {
-    // Wrap the bytes in NSData so we have a length property for the renderer.
-    _vertices = [[NSData alloc]
-                 initWithBytesNoCopy:VERTICES
-                 length:sizeof(VERTICES)
-                 freeWhenDone: false];
-    _vertexIndices = [[NSData alloc]
-                      initWithBytesNoCopy:VERTEX_INDICES
-                      length:sizeof(VERTEX_INDICES)
-                      freeWhenDone:false];
-    _clearColor = CLEAR_COLOR;
-    _texturePaths = @[ @"blue.png", @"red.png", [NSNull null], [NSNull null] ];
+  if (!self) return self;
 
-    _uniformDescriptors = [[NSMutableArray alloc] init];
-    _uniformDescriptors[UniformScale] = [[NSMutableDictionary alloc] init];
-    _uniformDescriptors[UniformScale][@"name"] = @"scale";
-    _uniformDescriptors[UniformScale][@"type"] = [NSNumber numberWithInt:UniformTypeFloat];
-    _uniformDescriptors[UniformScale][@"value"] = [NSNumber numberWithFloat:0.5];
-    _uniformDescriptors[UniformTex0UDisp] = [[NSMutableDictionary alloc] init];
-    _uniformDescriptors[UniformTex0UDisp][@"name"] = @"tex0UDisplacement";
-    _uniformDescriptors[UniformTex0UDisp][@"type"] = [NSNumber numberWithInt:UniformTypeFloat];
-    _uniformDescriptors[UniformTex0UDisp][@"value"] = [NSNumber numberWithFloat:0];
-    _uniformDescriptors[UniformTextureSelector] = [[NSMutableDictionary alloc] init];
-    _uniformDescriptors[UniformTextureSelector][@"name"] = @"texureSelector";
-    _uniformDescriptors[UniformTextureSelector][@"type"] = [NSNumber numberWithInt:UniformTypeFloat];
-    _uniformDescriptors[UniformTextureSelector][@"value"] = [NSNumber numberWithInt:0];
+  _shaderPath = @"shader.metal";
+  // Wrap the bytes in NSData so we have a length property for the renderer.
+  _vertices = [[NSData alloc]
+               initWithBytesNoCopy:VERTICES
+               length:sizeof(VERTICES)
+               freeWhenDone: false];
+  _vertexIndices = [[NSData alloc]
+                    initWithBytesNoCopy:VERTEX_INDICES
+                    length:sizeof(VERTEX_INDICES)
+                    freeWhenDone:false];
+  _clearColor = CLEAR_COLOR;
+  _texturePaths = @[ @"blue.png", @"red.png", [NSNull null], [NSNull null] ];
 
-    _tickCount = 0;
-  }
+  _uniformsCache = [[NSMutableArray alloc] init];
+  _uniformsCache[0] = [self buildShader1Uniforms];
+  _uniformsCache[1] = [self buildShader2Uniforms];
+
+  _uniforms = [[NSMutableArray alloc] init];
+
+  _tickCount = 0;
   return self;
+}
+
+- (NSMutableArray *)buildShader1Uniforms
+{
+  id uniforms = [[NSMutableArray alloc] init];
+  uniforms[0] = [[NSMutableDictionary alloc] init];
+  uniforms[0][@"name"] = @"scale";
+  uniforms[0][@"type"] = [NSNumber numberWithInt:UniformTypeFloat];
+  uniforms[0][@"value"] = [NSNumber numberWithFloat:0.5];
+  uniforms[1] = [[NSMutableDictionary alloc] init];
+  uniforms[1][@"name"] = @"tex0UDisplacement";
+  uniforms[1][@"type"] = [NSNumber numberWithInt:UniformTypeFloat];
+  uniforms[1][@"value"] = [NSNumber numberWithFloat:0];
+  uniforms[2] = [[NSMutableDictionary alloc] init];
+  uniforms[2][@"name"] = @"texureSelector";
+  uniforms[2][@"type"] = [NSNumber numberWithInt:UniformTypeFloat];
+  uniforms[2][@"value"] = [NSNumber numberWithInt:0];
+  return uniforms;
+}
+
+- (NSMutableArray *)buildShader2Uniforms
+{
+  id uniforms = [[NSMutableArray alloc] init];
+  uniforms[0] = [[NSMutableDictionary alloc] init];
+  uniforms[0][@"name"] = @"isColorInverted";
+  uniforms[0][@"type"] = [NSNumber numberWithInt:UniformTypeInt];
+  uniforms[0][@"value"] = [NSNumber numberWithInt:0];
+  return uniforms;
 }
 
 - (void)tick
 {
-  float scale = sin(2 * M_PI * _tickCount / 60) * 0.25 + 0.75;
-  _uniformDescriptors[UniformScale][@"value"] = [NSNumber numberWithFloat:scale];
-  _uniformDescriptors[UniformTex0UDisp][@"value"] = [NSNumber numberWithFloat:(_tickCount % 60) / 60.0];
-  if (_tickCount % 120 == 0) {
-    _uniformDescriptors[UniformTextureSelector][@"value"] = [NSNumber numberWithInt:0];
-  } else if (_tickCount % 120 == 60) {
-    _uniformDescriptors[UniformTextureSelector][@"value"] = [NSNumber numberWithInt:1];
+  // Swap shaders every 5 seconds / 300 frames
+  if (_tickCount % 600 < 300) {
+    [self shader1];
+  } else {
+    [self shader2];
   }
   _tickCount++;
+}
+
+- (void)shader1
+{
+  _shaderPath = SHADER1_PATH;
+  id uniforms = _uniformsCache[0];
+  float scale = sin(2 * M_PI * _tickCount / 60) * 0.25 + 0.75;
+  uniforms[0][@"value"] = [NSNumber numberWithFloat:scale];
+  uniforms[1][@"value"] = [NSNumber numberWithFloat:(_tickCount % 60) / 60.0];
+  if (_tickCount % 120 == 0) {
+    uniforms[2][@"value"] = [NSNumber numberWithInt:0];
+  } else if (_tickCount % 120 == 60) {
+    uniforms[2][@"value"] = [NSNumber numberWithInt:1];
+  }
+  _uniforms = uniforms;
+}
+
+- (void)shader2
+{
+  _shaderPath = SHADER2_PATH;
+  id uniforms = _uniformsCache[1];
+  if (_tickCount % 120 == 0) {
+    uniforms[0][@"value"] = [NSNumber numberWithInt:0];
+  } else if (_tickCount % 120 == 60) {
+    uniforms[0][@"value"] = [NSNumber numberWithInt:1];
+  }
+  _uniforms = uniforms;
 }
 
 @end

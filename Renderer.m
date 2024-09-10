@@ -6,15 +6,16 @@
 #import "VertexHandler.h"
 #import "UniformsHandler.h"
 #import "TextureHandler.h"
+#import "PipelineHandler.h"
 
 @implementation Renderer {
   id<MTLDevice> _device;
   id<MTLCommandQueue> _commandQueue;
-  id<MTLRenderPipelineState> _pipelineState;
   RenderSource *_source;
   VertexHandler *_vertexHandler;
   UniformsHandler *_uniformsHandler;
   TextureHandler *_textureHandler;
+  PipelineHandler *_pipelineHandler;
 
   bool _firstPass;
 }
@@ -27,53 +28,20 @@
 - (Renderer *)initWithDevice:(id<MTLDevice>)device source:(RenderSource *)source
 {
   self = [super init];
-  if (self != nil) {
-    _firstPass = true;
-    _source = source;
-    _device = device;
-    _vertexHandler = [[VertexHandler alloc] initWithDevice:_device source:_source];
-    _uniformsHandler = [[UniformsHandler alloc] initWithDevice:_device source:_source];
-    _textureHandler = [[TextureHandler alloc] initWithDevice:_device source:_source];
-    _commandQueue = [_device newCommandQueue];
+  if (!self) return self;
+  _firstPass = true;
+  _source = source;
+  _device = device;
+  _vertexHandler = [[VertexHandler alloc] initWithDevice:_device source:_source];
+  _uniformsHandler = [[UniformsHandler alloc] initWithDevice:_device source:_source];
+  _textureHandler = [[TextureHandler alloc] initWithDevice:_device source:_source];
+  _pipelineHandler = [[PipelineHandler alloc] initWithDevice:_device
+                      source:_source
+                      vertexDescriptor:_vertexHandler.vertexDescriptor];
+  _commandQueue = [_device newCommandQueue];
 
-    id library = [self initializeShaders];
-    if (!library) return nil;
-
-    [self initializePipeline:library];
-    if (!_pipelineState) return nil;
-  }
   return self;
 }
-
-- (id<MTLLibrary>)initializeShaders
-{
-  NSError *error;
-  NSString* shaderSource = [NSString stringWithContentsOfFile:@"shader.metal"
-                            encoding:NSUTF8StringEncoding
-                            error:&error];
-  id<MTLLibrary> library = [_device newLibraryWithSource:shaderSource options:nil error:&error];
-  if (!library) {
-    NSLog(@"Failed to create library, error: %@", error);
-  }
-  return library;
-}
-
-- (void)initializePipeline:(id<MTLLibrary>)library
-{
-  MTLRenderPipelineDescriptor* pipelineDescriptor = [[MTLRenderPipelineDescriptor alloc] init];
-  pipelineDescriptor.vertexDescriptor = _vertexHandler.vertexDescriptor;
-  pipelineDescriptor.vertexFunction = [library newFunctionWithName:@"vertex_shader"];
-  pipelineDescriptor.fragmentFunction = [library newFunctionWithName:@"fragment_shader"];
-  pipelineDescriptor.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
-
-  NSError* error;
-  _pipelineState = [_device newRenderPipelineStateWithDescriptor:pipelineDescriptor error:&error];
-  if (!_pipelineState) {
-    NSLog(@"Failed to create pipeline state, error: %@", error);
-  }
-}
-
-
 
 // ---[ MTKViewDelegate ] -----------------------------------------------------
 
@@ -89,10 +57,10 @@
   id drawable = view.currentDrawable;
   id commandBuffer = [_commandQueue commandBuffer];
   id commandEncoder = [commandBuffer renderCommandEncoderWithDescriptor:descriptor];
-  [commandEncoder setRenderPipelineState:_pipelineState];
 
   [_source tick];
 
+  [commandEncoder setRenderPipelineState:[_pipelineHandler getPipelineState]];
   [_textureHandler handleWithCommandEncoder:commandEncoder];
   [_uniformsHandler handleWithCommandEncoder:commandEncoder];
   [_vertexHandler handleWithCommandEncoder:commandEncoder];
