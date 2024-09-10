@@ -3,23 +3,21 @@
 #include <sys/types.h>
 
 #import "Renderer.h"
-#import "TextureHandler.h"
 #import "VertexHandler.h"
-#import "uniform_types.h"
+#import "UniformsHandler.h"
+#import "TextureHandler.h"
 
 @implementation Renderer {
   id<MTLDevice> _device;
   id<MTLCommandQueue> _commandQueue;
   id<MTLRenderPipelineState> _pipelineState;
-  NSMutableData * _uniformsBuffer;
   RenderSource *_source;
-  TextureHandler *_textureHandler;
   VertexHandler *_vertexHandler;
+  UniformsHandler *_uniformsHandler;
+  TextureHandler *_textureHandler;
 
   bool _firstPass;
 }
-
-static const NSUInteger UNIFORMS_BUFFER_CAPACITY = 4096;
 
 + (NSUInteger)getTextureSlotCount
 {
@@ -33,8 +31,9 @@ static const NSUInteger UNIFORMS_BUFFER_CAPACITY = 4096;
     _firstPass = true;
     _source = source;
     _device = device;
-    _textureHandler = [[TextureHandler alloc] initWithDevice:_device source:_source];
     _vertexHandler = [[VertexHandler alloc] initWithDevice:_device source:_source];
+    _uniformsHandler = [[UniformsHandler alloc] initWithDevice:_device source:_source];
+    _textureHandler = [[TextureHandler alloc] initWithDevice:_device source:_source];
     _commandQueue = [_device newCommandQueue];
 
     id library = [self initializeShaders];
@@ -42,8 +41,6 @@ static const NSUInteger UNIFORMS_BUFFER_CAPACITY = 4096;
 
     [self initializePipeline:library];
     if (!_pipelineState) return nil;
-
-    _uniformsBuffer = [NSMutableData dataWithLength:UNIFORMS_BUFFER_CAPACITY];
   }
   return self;
 }
@@ -76,37 +73,6 @@ static const NSUInteger UNIFORMS_BUFFER_CAPACITY = 4096;
   }
 }
 
-- (void)loadAndBindUniforms:(id<MTLRenderCommandEncoder>)commandEncoder
-{
-  void *buffer = _uniformsBuffer.mutableBytes;
-  size_t offset = 0;
-  for (size_t i = 0; i < _source.uniformDescriptors.count; i++) {
-    id descriptor = _source.uniformDescriptors[i];
-    enum UniformType type = ((NSNumber *)descriptor[@"type"]).intValue;
-    int intValue;
-    float floatValue;
-    switch (type) {
-    case UniformTypeInt:
-      intValue = ((NSNumber *)descriptor[@"value"]).intValue;
-      memcpy(buffer + offset, &intValue, sizeof(int));
-      offset += sizeof(int);
-      break;
-    case UniformTypeFloat:
-      floatValue = ((NSNumber *)descriptor[@"value"]).floatValue;
-      memcpy(buffer + offset, &floatValue, sizeof(float));
-      offset += sizeof(float);
-      break;
-    default:
-      NSLog(@"Invalid uniform type in descriptor %lu: %d", i, type);
-      break;
-    }
-  }
-  // For data totalling <= 4K, Apple advises using set[Foo]Bytes
-  // instead of set[Foo]Buffer
-  [commandEncoder setVertexBytes:buffer length:offset atIndex:1];
-  [commandEncoder setFragmentBytes:buffer length:offset atIndex:0];
-}
-
 
 
 // ---[ MTKViewDelegate ] -----------------------------------------------------
@@ -128,8 +94,7 @@ static const NSUInteger UNIFORMS_BUFFER_CAPACITY = 4096;
   [_source tick];
 
   [_textureHandler handleWithCommandEncoder:commandEncoder];
-  [self loadAndBindUniforms:commandEncoder];
-
+  [_uniformsHandler handleWithCommandEncoder:commandEncoder];
   [_vertexHandler handleWithCommandEncoder:commandEncoder];
 
   [commandEncoder endEncoding];

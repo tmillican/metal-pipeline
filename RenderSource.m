@@ -1,5 +1,5 @@
 #import "RenderSource.h"
-#import "uniform_types.h"
+#import "UniformsHandler.h"
 
 @implementation RenderSource {
   unsigned int _tickCount;
