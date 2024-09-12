@@ -132,7 +132,7 @@ static const NSUInteger VERTEX_INDEX_BUFFER_CAPACITY = 40960;
 
   [commandEncoder
    drawIndexedPrimitives:MTLPrimitiveTypeTriangle
-   indexCount: _source.vertexIndices.length / sizeof(uint32_t)
+   indexCount: _source.vertexIndexCount
    indexType: MTLIndexTypeUInt32
    indexBuffer: _vertexIndexBuffer
    indexBufferOffset: 0];

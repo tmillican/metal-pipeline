@@ -9,6 +9,8 @@
 
 @property NSData *vertexIndices;
 
+@property NSUInteger vertexIndexCount;
+
 @property MTLClearColor clearColor;
 
 @property NSArray *texturePaths;

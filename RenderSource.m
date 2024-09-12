@@ -46,10 +46,8 @@ static Vertex VERTICES_1[4] = {
   }
 };
 
-// NOTE: my renderer code asssumes uint32_t when figuring out how many
-// indices are in the `vertexIndices` property so that I don't have
-// to pass an explicit count.
 static uint32_t VERTEX_INDICES_1[6] = { 0, 1, 2, 1, 2, 3 };
+static NSUInteger VERTEX_INDEX_COUNT_1 = 6;
 
 static Vertex VERTICES_2[3] = {
   {
@@ -79,10 +77,11 @@ static Vertex VERTICES_2[3] = {
 };
 
 static uint32_t VERTEX_INDICES_2[6] = { 0, 1, 2 };
+static NSUInteger VERTEX_INDEX_COUNT_2 = 3;
 
-static MTLClearColor CLEAR_COLOR_1 = { 0.5, 0.5, 0.5, 1.0 };
+static MTLClearColor CLEAR_COLOR_1 = { 0.5, 0.25, 0.25, 1.0 };
 
-static MTLClearColor CLEAR_COLOR_2 = { 0.25, 0.25, 0.25, 1.0 };
+static MTLClearColor CLEAR_COLOR_2 = { 0.0, 0.0, 0.25, 1.0 };
 
 static NSString *SHADER1_PATH = @"shader1.metal";
 
@@ -161,6 +160,7 @@ static NSString *SHADER2_PATH = @"shader2.metal";
                     initWithBytesNoCopy:VERTEX_INDICES_1
                     length:sizeof(VERTEX_INDICES_1)
                     freeWhenDone:false];
+  _vertexIndexCount = VERTEX_INDEX_COUNT_1;
   _clearColor = CLEAR_COLOR_1;
 
   id uniforms = _uniformsCache[0];
@@ -195,6 +195,7 @@ static NSString *SHADER2_PATH = @"shader2.metal";
                     initWithBytesNoCopy:VERTEX_INDICES_2
                     length:sizeof(VERTEX_INDICES_2)
                     freeWhenDone:false];
+  _vertexIndexCount = VERTEX_INDEX_COUNT_2;
   _clearColor = CLEAR_COLOR_2;
 
   id uniforms = _uniformsCache[1];
