@@ -10,7 +10,7 @@
   NSMutableArray *_uniformsCache;
 }
 
-static Vertex VERTICES[4] = {
+static Vertex VERTICES_1[4] = {
   {
     { -1, -1, 0 }, // position
     { 1, 1, 0 }, // color
@@ -49,9 +49,40 @@ static Vertex VERTICES[4] = {
 // NOTE: my renderer code asssumes uint32_t when figuring out how many
 // indices are in the `vertexIndices` property so that I don't have
 // to pass an explicit count.
-static uint32_t VERTEX_INDICES[6] = { 0, 1, 2, 1, 2, 3 };
+static uint32_t VERTEX_INDICES_1[6] = { 0, 1, 2, 1, 2, 3 };
 
-static MTLClearColor CLEAR_COLOR = { 0.5, 0.5, 0.5, 1.0 };
+static Vertex VERTICES_2[3] = {
+  {
+    { -1, -1, 0 },
+    { 1, 0, 0 },
+    { 0, 0 },
+    { 0, 0 },
+    { 0, 0 },
+    { 0, 0 },
+  },
+  {
+    { 0, 1, 0 },
+    { 0, 1, 0 },
+    { 0, 0 },
+    { 0, 0 },
+    { 0, 0 },
+    { 0, 0 },
+  },
+  {
+    { 1, -1, 0 },
+    { 0, 0, 1 },
+    { 0, 0 },
+    { 0, 0 },
+    { 0, 0 },
+    { 0, 0 },
+  },
+};
+
+static uint32_t VERTEX_INDICES_2[6] = { 0, 1, 2 };
+
+static MTLClearColor CLEAR_COLOR_1 = { 0.5, 0.5, 0.5, 1.0 };
+
+static MTLClearColor CLEAR_COLOR_2 = { 0.25, 0.25, 0.25, 1.0 };
 
 static NSString *SHADER1_PATH = @"shader1.metal";
 
@@ -62,18 +93,6 @@ static NSString *SHADER2_PATH = @"shader2.metal";
   self = [super init];
   if (!self) return self;
 
-  _shaderPath = @"shader.metal";
-  // Wrap the bytes in NSData for convenience -- no need for a separate
-  // length property this way.
-  _vertices = [[NSData alloc]
-               initWithBytesNoCopy:VERTICES
-               length:sizeof(VERTICES)
-               freeWhenDone: false];
-  _vertexIndices = [[NSData alloc]
-                    initWithBytesNoCopy:VERTEX_INDICES
-                    length:sizeof(VERTEX_INDICES)
-                    freeWhenDone:false];
-  _clearColor = CLEAR_COLOR;
   _texturePaths = @[ @"blue.png", @"red.png", [NSNull null], [NSNull null] ];
 
   _uniformsCache = [[NSMutableArray alloc] init];
@@ -83,6 +102,7 @@ static NSString *SHADER2_PATH = @"shader2.metal";
   _uniforms = [[NSMutableArray alloc] init];
 
   _tickCount = 0;
+  [self shader1];
   return self;
 }
 
@@ -130,6 +150,19 @@ static NSString *SHADER2_PATH = @"shader2.metal";
 - (void)shader1
 {
   _shaderPath = SHADER1_PATH;
+
+  // Wrap the bytes in NSData for convenience -- no need for a separate
+  // length property this way.
+  _vertices = [[NSData alloc]
+               initWithBytesNoCopy:VERTICES_1
+               length:sizeof(VERTICES_1)
+               freeWhenDone: false];
+  _vertexIndices = [[NSData alloc]
+                    initWithBytesNoCopy:VERTEX_INDICES_1
+                    length:sizeof(VERTEX_INDICES_1)
+                    freeWhenDone:false];
+  _clearColor = CLEAR_COLOR_1;
+
   id uniforms = _uniformsCache[0];
 
   // Make the scale swings sinusoidally from 0.5 to 1.0 over 1 second.
@@ -153,6 +186,17 @@ static NSString *SHADER2_PATH = @"shader2.metal";
 - (void)shader2
 {
   _shaderPath = SHADER2_PATH;
+
+  _vertices = [[NSData alloc]
+               initWithBytesNoCopy:VERTICES_2
+               length:sizeof(VERTICES_2)
+               freeWhenDone: false];
+  _vertexIndices = [[NSData alloc]
+                    initWithBytesNoCopy:VERTEX_INDICES_2
+                    length:sizeof(VERTEX_INDICES_2)
+                    freeWhenDone:false];
+  _clearColor = CLEAR_COLOR_2;
+
   id uniforms = _uniformsCache[1];
   // The color of the primitives inverts every 2 seconds.
   if (_tickCount % 120 == 0) {
