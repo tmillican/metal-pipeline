@@ -1,5 +1,6 @@
 #import "RenderSource.h"
 #import "UniformsHandler.h"
+#import "Vertex.h"
 
 @implementation RenderSource {
   unsigned int _tickCount;
@@ -62,7 +63,8 @@ static NSString *SHADER2_PATH = @"shader2.metal";
   if (!self) return self;
 
   _shaderPath = @"shader.metal";
-  // Wrap the bytes in NSData so we have a length property for the renderer.
+  // Wrap the bytes in NSData for convenience -- no need for a separate
+  // length property this way.
   _vertices = [[NSData alloc]
                initWithBytesNoCopy:VERTICES
                length:sizeof(VERTICES)
@@ -88,6 +90,8 @@ static NSString *SHADER2_PATH = @"shader2.metal";
 {
   id uniforms = [[NSMutableArray alloc] init];
   uniforms[0] = [[NSMutableDictionary alloc] init];
+  // The "name" field of the descriptors isn't used for anything by
+  // the renderer; it's just for code clarity.
   uniforms[0][@"name"] = @"scale";
   uniforms[0][@"type"] = [NSNumber numberWithInt:UniformTypeFloat];
   uniforms[0][@"value"] = [NSNumber numberWithFloat:0.5];
@@ -127,14 +131,22 @@ static NSString *SHADER2_PATH = @"shader2.metal";
 {
   _shaderPath = SHADER1_PATH;
   id uniforms = _uniformsCache[0];
+
+  // Make the scale swings sinusoidally from 0.5 to 1.0 over 1 second.
   float scale = sin(2 * M_PI * _tickCount / 60) * 0.25 + 0.75;
   uniforms[0][@"value"] = [NSNumber numberWithFloat:scale];
+
+  // The U-axis displacement of the texture linearly increases from 0.0 to 1.0
+  // over 1 second, and then begins again from 0.0. I.e. it scrolls left.
   uniforms[1][@"value"] = [NSNumber numberWithFloat:(_tickCount % 60) / 60.0];
+
+  // The selected texture toggles every 2 seconds.
   if (_tickCount % 120 == 0) {
     uniforms[2][@"value"] = [NSNumber numberWithInt:0];
   } else if (_tickCount % 120 == 60) {
     uniforms[2][@"value"] = [NSNumber numberWithInt:1];
   }
+
   _uniforms = uniforms;
 }
 
@@ -142,6 +154,7 @@ static NSString *SHADER2_PATH = @"shader2.metal";
 {
   _shaderPath = SHADER2_PATH;
   id uniforms = _uniformsCache[1];
+  // The color of the primitives inverts every 2 seconds.
   if (_tickCount % 120 == 0) {
     uniforms[0][@"value"] = [NSNumber numberWithInt:0];
   } else if (_tickCount % 120 == 60) {

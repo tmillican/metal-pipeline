@@ -1,8 +1,5 @@
 #import <Foundation/Foundation.h>
 #import <Metal/Metal.h>
-#import <stdint.h>
-
-#import "Vertex.h"
 
 @interface RenderSource : NSObject
 

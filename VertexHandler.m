@@ -1,5 +1,13 @@
 #import "VertexHandler.h"
 #import "Renderer.h"
+#import "Vertex.h"
+
+// The vertex handler copies the vertex data from the source into the vertex
+// and index buffers. It also issues the `drawIndexedPrimitives:` call so that
+// these buffers remain completely abstracted by the vertex handler.
+//
+// The one exception to this is that the vertex descriptor is exposed because
+// the `PipelineHandler` needs this to set up the pipeline.
 
 @implementation VertexHandler {
   id<MTLDevice> _device;
@@ -8,6 +16,8 @@
   id<MTLBuffer> _vertexIndexBuffer;
 }
 
+// Arbitrary choice of size, but you should probably choose a multiple of the
+// page size (4K).
 static const NSUInteger VERTEX_BUFFER_CAPACITY = 40960;
 static const NSUInteger VERTEX_INDEX_BUFFER_CAPACITY = 40960;
 

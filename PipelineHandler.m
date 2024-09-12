@@ -1,5 +1,12 @@
 #import "PipelineHandler.h"
 
+// Sets up the MTLPipelineState, which includes the vertex and fragment
+// function. Whenever the shader path changes, the pipeline state is cached,
+// using the shader path as the lookup key, to prevent unncessary shader
+// recompilation.
+//
+// As with the texture cache in TextureHandler, there is no cache limit.
+
 @implementation PipelineHandler {
   id<MTLDevice> _device;
   RenderSource *_source;

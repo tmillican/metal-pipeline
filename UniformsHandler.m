@@ -1,11 +1,16 @@
 #import "UniformsHandler.h"
 
+// The uniforms handler processes the uniform descriptors to serialize them in
+// whatever format the shader expects.
+
 @implementation UniformsHandler {
   id<MTLDevice> _device;
   RenderSource *_source;
   id<MTLBuffer> _uniformsBuffer;
 }
 
+// Arbitrary choice of size, but you should probably choose a multiple of the
+// page size (4K).
 static const NSUInteger UNIFORMS_BUFFER_CAPACITY = 4096;
 
 - (UniformsHandler *)initWithDevice:(id<MTLDevice>)device source:(RenderSource *)source;
